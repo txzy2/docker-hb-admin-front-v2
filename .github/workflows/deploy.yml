@@ -42,10 +42,17 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ secrets.PROJECT_PATH }}
-            docker compose down 
-            docker system prune -a --force
-            docker compose up -d
+            set -e  # Выход при ошибке любой команды
+            cd "${{ secrets.PROJECT_PATH }}"
 
-            sleep 10
-            docker exec -u 0 hb_service_app bash -c "yarn build"
+            # Безопасный down (только текущий проект)
+            docker compose down || true
+
+            # Запуск с билдом (если нужно пересобрать образы)
+            docker compose up -d --build
+
+            # Ожидание готовности контейнера
+            timeout 60 bash -c 'until docker inspect -f "{{.State.Running}}" hb_service_app 2>/dev/null | grep -q "true"; do sleep 2; done'
+
+            # Запуск yarn build внутри контейнера (без root)
+            docker exec hb_service_app bash -c "yarn install && yarn build"

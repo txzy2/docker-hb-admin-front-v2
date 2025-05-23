@@ -60,8 +60,6 @@ services:
     entrypoint: ["/bin/sh", "/etc/nginx/conf/entrypoint.sh"]
     networks:
       - hb_net
-    depends_on:
-      - hb_grafana
 
   #ADMINER
   hb_adminer:
@@ -74,52 +72,9 @@ services:
       - hb_net
 
   # GRAFANA
-  hb_grafana:
-    image: grafana/grafana
-    container_name: hb_service_grafana
-    restart: always
-    ports:
-      - "${GRAFANA_PORT}:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASS}
-      - GF_SERVER_ROOT_URL=http://localhost:581/grafana/
-    depends_on:
-      - hb_loki
-    networks:
-      - hb_net
-
-  hb_loki:
-    image: grafana/loki:latest
-    container_name: hb_service_loki
-    ports:
-      - "${LOKI_PORT}:3100"
-    command: -config.file=/etc/loki/local-config.yaml
-    volumes:
-      - loki_data:/loki
-    networks:
-      - hb_net
-
-  hb_promtail:
-    image: grafana/promtail:latest
-    container_name: hb_service_promtail
-    volumes:
-      - ./promtail-config.yaml:/etc/promtail/config.yml
-      - ./www/hb/storage/logs/:/var/www/storage/logs:ro
-    command: -config.file=/etc/promtail/config.yml
-    networks:
-      - hb_net
-    depends_on:
-      - hb_loki
 
 #Docker Networks
 networks:
   hb_net:
     driver: bridge
     # external: true
-
-volumes:
-  grafana_data:
-    driver: local
-  loki_data:
