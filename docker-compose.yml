@@ -1,0 +1,125 @@
+version: "3.6"
+
+services:
+  #PHP Service
+  hb_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PHP_VERSION: ${PHP_VERSION}
+    container_name: hb_service_app
+    restart: always
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: prod
+      TZ: ${TIME_ZONE}
+    working_dir: /var/www/
+    volumes:
+      - ./www/hb/:/var/www
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - hb_net
+
+  hb_db:
+    build:
+      context: ./www/pgsql
+      dockerfile: Dockerfile
+      args:
+        DB_VERSION_PG_SQL: ${DB_VERSION_PG_SQL}
+    restart: always
+    container_name: hb_service_db
+    tty: true
+    volumes:
+      - ./dbdata_hb_service:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_MULTIPLE_DATABASES=${DB_NAME_GATEWAY}
+      - POSTGRES_USER=${DB_USER_GATEWAY}
+      - POSTGRES_PASSWORD=${DB_PASS_GATEWAY}
+    networks:
+      - hb_net
+
+  #Nginx Service
+  hb_webserver:
+    image: nginx:alpine
+    container_name: hb_service_webserver
+    restart: always
+    tty: true
+    ports:
+      - "${NGINX_PORT}:80"
+      # - "5443:443"
+    volumes:
+      - ./www/hb/:/var/www
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+      - ./nginx/logs/:/var/log/nginx
+      - ./nginx/ssl/:/etc/nginx/ssl
+      - ./nginx/conf/:/etc/nginx/conf
+    environment:
+      - GRAFANA_PORT=${GRAFANA_PORT}
+    entrypoint: ["/bin/sh", "/etc/nginx/conf/entrypoint.sh"]
+    networks:
+      - hb_net
+    depends_on:
+      - hb_grafana
+
+  #ADMINER
+  hb_adminer:
+    image: ${ADMINER_VERSION}
+    container_name: hb_service_adminer
+    restart: always
+    ports:
+      - ${ADMINER_PORT}:8080
+    networks:
+      - hb_net
+
+  # GRAFANA
+  hb_grafana:
+    image: grafana/grafana
+    container_name: hb_service_grafana
+    restart: always
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASS}
+      - GF_SERVER_ROOT_URL=http://localhost:581/grafana/
+    depends_on:
+      - hb_loki
+    networks:
+      - hb_net
+
+  hb_loki:
+    image: grafana/loki:latest
+    container_name: hb_service_loki
+    ports:
+      - "${LOKI_PORT}:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    networks:
+      - hb_net
+
+  hb_promtail:
+    image: grafana/promtail:latest
+    container_name: hb_service_promtail
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/config.yml
+      - ./www/hb/storage/logs/:/var/www/storage/logs:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - hb_net
+    depends_on:
+      - hb_loki
+
+#Docker Networks
+networks:
+  hb_net:
+    driver: bridge
+    # external: true
+
+volumes:
+  grafana_data:
+    driver: local
+  loki_data:
