@@ -57,5 +57,5 @@ jobs:
             # Ожидание готовности контейнера
             timeout 60 bash -c 'until docker inspect -f "{{.State.Running}}" hb_service_app 2>/dev/null | grep -q "true"; do sleep 2; done'
 
-            # Запуск yarn build внутри контейнера (без root)
+            docker exec hb_service_app bash -c "chown -R www:www /var/www"
             docker exec hb_service_app bash -c "yarn install && yarn build"
