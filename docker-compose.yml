@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile
       args:
         PHP_VERSION: ${PHP_VERSION}
+    image: txzy/hb_app:1.0.0
     container_name: hb_service_app
     restart: always
     tty: true
@@ -19,24 +20,6 @@ services:
     volumes:
       - ./www/hb/:/var/www
       - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
-    networks:
-      - hb_net
-
-  hb_db:
-    build:
-      context: ./www/pgsql
-      dockerfile: Dockerfile
-      args:
-        DB_VERSION_PG_SQL: ${DB_VERSION_PG_SQL}
-    restart: always
-    container_name: hb_service_db
-    tty: true
-    volumes:
-      - ./dbdata_hb_service:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_MULTIPLE_DATABASES=${DB_NAME_GATEWAY}
-      - POSTGRES_USER=${DB_USER_GATEWAY}
-      - POSTGRES_PASSWORD=${DB_PASS_GATEWAY}
     networks:
       - hb_net
 
@@ -55,23 +38,9 @@ services:
       - ./nginx/logs/:/var/log/nginx
       - ./nginx/ssl/:/etc/nginx/ssl
       - ./nginx/conf/:/etc/nginx/conf
-    environment:
-      - GRAFANA_PORT=${GRAFANA_PORT}
     entrypoint: ["/bin/sh", "/etc/nginx/conf/entrypoint.sh"]
     networks:
       - hb_net
-
-  #ADMINER
-  hb_adminer:
-    image: ${ADMINER_VERSION}
-    container_name: hb_service_adminer
-    restart: always
-    ports:
-      - ${ADMINER_PORT}:8080
-    networks:
-      - hb_net
-
-  # GRAFANA
 
 #Docker Networks
 networks:
