@@ -29,6 +29,7 @@ jobs:
           # Добавляем хост в known_hosts (чтобы избежать вопроса о доверии)
           ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Copy docker-compose.yml to server
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
